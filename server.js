@@ -21,12 +21,13 @@ const PORT = process.env.PORT || 5000;
 // Middleware
 const corsOptions = {
   origin: function (origin, callback) {
-    // Allow all localhost origins with any port
+    // Allow all localhost origins for development
     const allowedOrigins = [
-      /^http:\/\/localhost:\d+$/,  // Any localhost port
+      /^http:\/\/localhost:\d+$/,
       /^http:\/\/127\.0\.0\.1:\d+$/,
       'https://callallocation-backend.onrender.com',
-      'https://your-frontend.vercel.app'
+      'https://callallocation-frontend.vercel.app',
+      /\.vercel\.app$/
     ];
     
     // Check if origin matches any pattern
@@ -37,9 +38,11 @@ const corsOptions = {
       return pattern === origin;
     });
 
-    if (allowed || !origin) { // Allow non-browser requests (like Postman)
+    // Allow requests with no origin
+    if (allowed || !origin) {
       callback(null, true);
     } else {
+      console.log('CORS blocked origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
