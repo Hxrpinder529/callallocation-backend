@@ -164,29 +164,4 @@ router.get('/daily', async (req, res) => {
   }
 });
 
-// Combined dashboard data
-router.get('/history', async (req, res) => {
-  try {
-    // Fetch all data in parallel with proper error handling
-    const baseUrl = `http://localhost:${process.env.PORT || 5000}`;
-    
-    const [statsRes, recentRes, trendRes, dailyRes] = await Promise.allSettled([
-      fetch(`${baseUrl}/api/dashboard/stats`).then(r => r.json()),
-      fetch(`${baseUrl}/api/dashboard/recent`).then(r => r.json()),
-      fetch(`${baseUrl}/api/dashboard/trend`).then(r => r.json()),
-      fetch(`${baseUrl}/api/dashboard/daily`).then(r => r.json())
-    ]);
-
-    res.json({
-      stats: statsRes.status === 'fulfilled' ? statsRes.value : { totalCalls: 0, allocatedCalls: 0, unallocatedCalls: 0, pendingCalls: 0, totalASCs: 0 },
-      recent: recentRes.status === 'fulfilled' ? recentRes.value : [],
-      trend: trendRes.status === 'fulfilled' ? trendRes.value : [],
-      daily: dailyRes.status === 'fulfilled' ? dailyRes.value : []
-    });
-  } catch (error) {
-    console.error('Error fetching dashboard data:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 module.exports = router;

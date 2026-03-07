@@ -353,10 +353,13 @@ app.post('/api/network/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// ROUTE MOUNTING (AFTER ALL ROUTES ARE DEFINED)
+// ROUTE MOUNTING
+app.use('/api/dashboard/stats', dashboardRoutes);
+app.use('/api/dashboard/recent', dashboardRoutes);
+app.use('/api/dashboard/trend', dashboardRoutes);
+app.use('/api/dashboard/daily', dashboardRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', performanceRoutes);
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/network', networkRoutes);
 app.use('/api/jobs', jobRoutes);
