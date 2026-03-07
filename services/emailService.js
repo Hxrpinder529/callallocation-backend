@@ -7,28 +7,54 @@ const createTransporter = () => {
   return nodemailer.createTransport({
     host: "smtp.zeptomail.in",
     port: 587,
+    secure: false, // Use TLS
     auth: {
-      user: "emailapikey", // This is literally "emailapikey" as per your screenshot
-      pass: process.env.ZEPTOMAIL_PASSWORD // Your password from ZeptoMail
+      user: "emailapikey",
+      pass: process.env.ZEPTOMAIL_PASSWORD
     },
     tls: {
-      rejectUnauthorized: false
-    }
+      rejectUnauthorized: false, // Allow self-signed certificates
+      ciphers: 'SSLv3'
+    },
+    connectionTimeout: 60000, // 60 seconds
+    greetingTimeout: 30000,    // 30 seconds
+    socketTimeout: 60000,      // 60 seconds
+    debug: true,               // Enable debug logs
+    logger: true               // Log to console
   });
 };
 
 // Initialize transporter
 let transporter = createTransporter();
+let connectionVerified = false;
 
-// Verify connection on startup
-const verifyConnection = async () => {
-  try {
-    await transporter.verify();
-    console.log('✅ ZeptoMail transporter ready');
-  } catch (error) {
-    console.error('❌ ZeptoMail connection error:', error);
+// Verify connection with retry mechanism
+const verifyConnection = async (retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      console.log(`🔄 Attempting to verify ZeptoMail connection (attempt ${i + 1}/${retries})...`);
+      await transporter.verify();
+      console.log('✅ ZeptoMail transporter ready');
+      connectionVerified = true;
+      return true;
+    } catch (error) {
+      console.error(`❌ ZeptoMail connection error (attempt ${i + 1}/${retries}):`, error.message);
+      
+      if (i < retries - 1) {
+        console.log('⏳ Waiting 5 seconds before retry...');
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Recreate transporter for new attempt
+        transporter = createTransporter();
+      }
+    }
   }
+  
+  console.error('❌ Failed to verify ZeptoMail connection after multiple attempts');
+  connectionVerified = false;
+  return false;
 };
+
+// Verify connection on startup (don't block server start)
 verifyConnection();
 
 // Send single allocation email
@@ -42,6 +68,12 @@ const sendAllocationEmail = async (job, asc, kamEmail, asmEmail) => {
   const brand = job.Brand || job.brand;
   const product = job.Product || job.product;
   const model = job.Model || job.model;
+
+  // Check if connection is verified
+  if (!connectionVerified) {
+    console.warn('⚠️ ZeptoMail connection not verified, attempting to reconnect...');
+    await verifyConnection(2);
+  }
 
   const mailOptions = {
     from: {
