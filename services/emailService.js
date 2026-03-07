@@ -6,21 +6,20 @@ require('dotenv').config();
 const createTransporter = () => {
   return nodemailer.createTransport({
     host: "smtp.zeptomail.in",
-    port: 587,
-    secure: false, // Use TLS
+    port: 465,
+    secure: true, // Use SSL
     auth: {
       user: "emailapikey",
       pass: process.env.ZEPTOMAIL_PASSWORD
     },
     tls: {
-      rejectUnauthorized: false, // Allow self-signed certificates
-      ciphers: 'SSLv3'
+      rejectUnauthorized: false
     },
-    connectionTimeout: 60000, // 60 seconds
-    greetingTimeout: 30000,    // 30 seconds
-    socketTimeout: 60000,      // 60 seconds
-    debug: true,               // Enable debug logs
-    logger: true               // Log to console
+    connectionTimeout: 60000,
+    greetingTimeout: 30000,
+    socketTimeout: 60000,
+    debug: true,
+    logger: true
   });
 };
 
