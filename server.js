@@ -20,11 +20,29 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 const corsOptions = {
-  origin: [
-    'http://localhost:3000',
-    'https://your-frontend.vercel.app', // You'll update this after frontend deploy
-    /\.vercel\.app$/ // Allows all vercel.app subdomains
-  ],
+  origin: function (origin, callback) {
+    // Allow all localhost origins with any port
+    const allowedOrigins = [
+      /^http:\/\/localhost:\d+$/,  // Any localhost port
+      /^http:\/\/127\.0\.0\.1:\d+$/,
+      'https://callallocation-backend.onrender.com',
+      'https://your-frontend.vercel.app' // Your production URL
+    ];
+    
+    // Check if origin matches any pattern
+    const allowed = allowedOrigins.some(pattern => {
+      if (pattern instanceof RegExp) {
+        return pattern.test(origin);
+      }
+      return pattern === origin;
+    });
+
+    if (allowed || !origin) { // Allow non-browser requests (like Postman)
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   optionsSuccessStatus: 200
 };
@@ -56,6 +74,34 @@ const upload = multer({
       cb(new Error('Only Excel files are allowed!'), false);
     }
   }
+});
+
+// Health check endpoint (for keep-alive and Render monitoring)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime()
+  });
+});
+
+// Root endpoint (to check if API is running)
+app.get('/', (req, res) => {
+  res.json({ 
+    message: 'RV Solutions API is running',
+    version: '1.0.0',
+    endpoints: [
+      '/api/health',
+      '/api/upload-allocate',
+      '/api/history',
+      '/api/network',
+      '/api/auth',
+      '/api/dashboard',
+      '/api/reports',
+      '/api/jobs',
+      '/api/admin'
+    ]
+  });
 });
 
 // API Routes
