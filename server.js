@@ -26,7 +26,7 @@ const corsOptions = {
       /^http:\/\/localhost:\d+$/,  // Any localhost port
       /^http:\/\/127\.0\.0\.1:\d+$/,
       'https://callallocation-backend.onrender.com',
-      'https://your-frontend.vercel.app' // Your production URL
+      'https://your-frontend.vercel.app'
     ];
     
     // Check if origin matches any pattern
@@ -76,15 +76,6 @@ const upload = multer({
   }
 });
 
-// Health check endpoint (for keep-alive and Render monitoring)
-app.get('/api/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime()
-  });
-});
-
 // Root endpoint (to check if API is running)
 app.get('/', (req, res) => {
   res.json({ 
@@ -104,8 +95,22 @@ app.get('/', (req, res) => {
   });
 });
 
-// API Routes
+// Health check endpoint (for keep-alive and Render monitoring)
+app.get('/api/health', (req, res) => {
+  res.status(200).json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
 
+// Simple ping endpoint (for keep-alive)
+app.get('/api/ping', (req, res) => {
+  res.status(200).send('pong');
+});
+
+// API ROUTES
 // 1. Upload and allocate calls
 app.post('/api/upload-allocate', upload.single('file'), async (req, res) => {
   try {
@@ -345,7 +350,7 @@ app.post('/api/network/upload', upload.single('file'), async (req, res) => {
   }
 });
 
-// Routes
+// ROUTE MOUNTING (AFTER ALL ROUTES ARE DEFINED)
 app.use('/api/auth', authRoutes);
 app.use('/api/reports', performanceRoutes);
 app.use('/api/dashboard', dashboardRoutes);
@@ -354,13 +359,40 @@ app.use('/api/network', networkRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/admin', adminRoutes);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
-  console.log(`API endpoints:`);
-  console.log(`- POST /api/upload-allocate (upload calls file)`);
-  console.log(`- GET /api/history (view allocation history)`);
-  console.log(`- GET /api/network (view network data)`);
-  console.log(`- POST /api/network/add (add single ASC)`);
-  console.log(`- POST /api/network/upload (bulk upload network)`);
+// Simple in-memory keep-alive
+if (process.env.NODE_ENV === 'production') {
+  console.log('Starting keep-alive service...');
+  
+  const PING_INTERVAL = 14 * 60 * 1000; // 14 minutes
+  const SELF_URL = process.env.RENDER_URL || 'https://callallocation-backend.onrender.com';
+  
+  function pingSelf() {
+    console.log(`[${new Date().toISOString()}] Pinging self to keep alive...`);
+    
+    const https = require('https');
+    https.get(`${SELF_URL}/api/ping`, (resp) => {
+      if (resp.statusCode === 200) {
+        console.log('Self-ping successful');
+      } else {
+        console.log(`Self-ping returned ${resp.statusCode}`);
+      }
+    }).on('error', (err) => {
+      console.error('Self-ping failed:', err.message);
+    });
+  }
+  
+  // Ping immediately, then every 14 minutes
+  setTimeout(() => pingSelf(), 30 * 1000); // Wait 30 seconds after startup
+  setInterval(pingSelf, PING_INTERVAL);
+  
+  console.log(`Keep-alive scheduled every ${PING_INTERVAL/60000} minutes`);
+}
+
+// START SERVER
+
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`Server running on port ${PORT}`);
+  console.log(`Health check: http://localhost:${PORT}/api/health`);
+  console.log(`API base URL: https://callallocation-backend.onrender.com`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
