@@ -27,7 +27,7 @@ const corsOptions = {
       /^http:\/\/127\.0\.0\.1:\d+$/,
       'https://callallocation-backend.onrender.com',
       'https://callallocation-frontend.vercel.app',
-      'https://rvsolutions-notify.in',
+      'https://www.rvsolutions-notify.in',
       /\.vercel\.app$/
     ];
     
