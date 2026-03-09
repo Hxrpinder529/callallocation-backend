@@ -355,13 +355,13 @@ app.post('/api/network/upload', upload.single('file'), async (req, res) => {
 });
 
 // ROUTE MOUNTING
-app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/auth', authRoutes);
-app.use('/api/reports', performanceRoutes);
-app.use('/api/reports', reportRoutes);
-app.use('/api/network', networkRoutes);
-app.use('/api/jobs', jobRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/network', networkRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/reports/performance', performanceRoutes);
+app.use('/api/reports', reportRoutes);
 
 // Simple in-memory keep-alive
 if (process.env.NODE_ENV === 'production') {
