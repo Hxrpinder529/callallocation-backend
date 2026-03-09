@@ -20,16 +20,20 @@ const sendEmailViaAPI = async (to, cc, subject, htmlContent) => {
     };
 
     console.log('📧 Sending email via ZeptoMail API...');
-    console.log('To:', to);
-    console.log('CC:', cc);
-    console.log('Subject:', subject);
-
-    const response = await fetch('https://api.zeptomail.in/v1.1/email/template', {
+    
+    // Get the full API key from environment
+    const apiKey = process.env.ZEPTOMAIL_PASSWORD;
+    const agentAlias = process.env.ZEPTO_AGENT_ALIAS || '46c64c8d68483e36';
+    
+    console.log('Using agent alias:', agentAlias);
+    
+    // Use the agent alias in the URL as per your ZeptoMail window
+    const response = await fetch(`https://api.zeptomail.in/v1.1/email/template/${agentAlias}`, {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Zoho-enczapikey ${process.env.ZEPTOMAIL_PASSWORD}`
+        'Authorization': apiKey // Now this includes the full "Zoho-enczapikey " prefix
       },
       body: JSON.stringify(payload)
     });
@@ -37,21 +41,17 @@ const sendEmailViaAPI = async (to, cc, subject, htmlContent) => {
     const data = await response.json();
     
     if (!response.ok) {
-      console.error('❌ ZeptoMail API Error Response:', {
+      console.error('❌ ZeptoMail API Error:', {
         status: response.status,
-        statusText: response.statusText,
         data: data
       });
-      throw new Error(data.message || JSON.stringify(data) || 'Failed to send email');
+      throw new Error(data.message || JSON.stringify(data));
     }
 
     console.log('✅ Email sent successfully:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Email API error details:', {
-      message: error.message,
-      stack: error.stack
-    });
+    console.error('❌ Email API error:', error.message);
     return { success: false, error: error.message };
   }
 };
