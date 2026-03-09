@@ -20,7 +20,7 @@ const calculateTAT = (allocationDate, closeDate) => {
   };
 
 // ASC Performance Report
-router.get('/performance/asc-performance', authenticate, async (req, res) => {
+router.get('/asc-performance', authenticate, async (req, res) => {
     try {
       const { startDate, endDate } = req.query;
   
@@ -131,7 +131,7 @@ router.get('/performance/asc-performance', authenticate, async (req, res) => {
   });
 
 // TAT Report
-router.get('/performance/tat-report', authenticate, async (req, res) => {
+router.get('/tat-report', authenticate, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -216,7 +216,7 @@ router.get('/performance/tat-report', authenticate, async (req, res) => {
 });
 
 // Brand Performance
-router.get('/performance/brand-performance', authenticate, async (req, res) => {
+router.get('/brand-performance', authenticate, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -301,7 +301,7 @@ router.get('/performance/brand-performance', authenticate, async (req, res) => {
 });
 
 // Zone Performance
-router.get('/performance/zone-performance', authenticate, async (req, res) => {
+router.get('/zone-performance', authenticate, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -376,7 +376,7 @@ router.get('/performance/zone-performance', authenticate, async (req, res) => {
 });
 
 // Daily Trends
-router.get('/performance/daily-trends', authenticate, async (req, res) => {
+router.get('/daily-trends', authenticate, async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
@@ -454,7 +454,7 @@ router.get('/performance/daily-trends', authenticate, async (req, res) => {
 });
 
 // Download endpoints (Excel/CSV)
-router.get('/performance/:reportType/download', authenticate, async (req, res) => {
+router.get('/:reportType/download', authenticate, async (req, res) => {
   try {
     const { reportType } = req.params;
     const { startDate, endDate, format = 'excel' } = req.query;
