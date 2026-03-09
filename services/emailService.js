@@ -13,27 +13,29 @@ const sendEmailViaAPI = async (to, cc, subject, htmlContent) => {
         "address": "notifications@rvsolutions-notify.in",
         "name": "Consumer Services - RV Solutions"
       },
-      "to": to.map(email => ({ "email_address": { "address": email } })),
-      "cc": cc.map(email => ({ "email_address": { "address": email } })),
+      "to": to.map(email => ({ 
+        "email_address": { 
+          "address": email 
+        } 
+      })),
+      "cc": cc.map(email => ({ 
+        "email_address": { 
+          "address": email 
+        } 
+      })),
       "subject": subject,
       "htmlbody": htmlContent
     };
 
     console.log('📧 Sending email via ZeptoMail API...');
     
-    // Get the full API key from environment
-    const apiKey = process.env.ZEPTOMAIL_PASSWORD;
-    const agentAlias = process.env.ZEPTO_AGENT_ALIAS || '46c64c8d68483e36';
-    
-    console.log('Using agent alias:', agentAlias);
-    
-    // Use the agent alias in the URL as per your ZeptoMail window
-    const response = await fetch(`https://api.zeptomail.in/v1.1/email/template/${agentAlias}`, {
+    // Use the SIMPLE email endpoint - NOT the template endpoint
+    const response = await fetch('https://api.zeptomail.in/v1.1/email', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': apiKey // Now this includes the full "Zoho-enczapikey " prefix
+        'Authorization': process.env.ZEPTOMAIL_PASSWORD 
       },
       body: JSON.stringify(payload)
     });
