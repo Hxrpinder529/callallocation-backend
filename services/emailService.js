@@ -20,27 +20,38 @@ const sendEmailViaAPI = async (to, cc, subject, htmlContent) => {
     };
 
     console.log('📧 Sending email via ZeptoMail API...');
+    console.log('To:', to);
+    console.log('CC:', cc);
+    console.log('Subject:', subject);
 
-    const response = await fetch(ZEPTO_API_URL, {
+    const response = await fetch('https://api.zeptomail.in/v1.1/email/template', {
       method: 'POST',
       headers: {
         'Accept': 'application/json',
         'Content-Type': 'application/json',
-        'Authorization': `Zoho-enczapikey ${ZEPTO_API_KEY}`
+        'Authorization': `Zoho-enczapikey ${process.env.ZEPTOMAIL_PASSWORD}`
       },
       body: JSON.stringify(payload)
     });
 
     const data = await response.json();
-
+    
     if (!response.ok) {
-      throw new Error(data.message || 'Failed to send email');
+      console.error('❌ ZeptoMail API Error Response:', {
+        status: response.status,
+        statusText: response.statusText,
+        data: data
+      });
+      throw new Error(data.message || JSON.stringify(data) || 'Failed to send email');
     }
 
     console.log('✅ Email sent successfully:', data);
     return { success: true, data };
   } catch (error) {
-    console.error('❌ Email API error:', error);
+    console.error('❌ Email API error details:', {
+      message: error.message,
+      stack: error.stack
+    });
     return { success: false, error: error.message };
   }
 };
