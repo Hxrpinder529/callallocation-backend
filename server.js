@@ -11,6 +11,7 @@ const performanceRoutes = require('./routes/performanceRoutes');
 const adminRoutes = require('./routes/adminRoutes');
 const fs = require('fs');
 const dashboardRoutes = require('./routes/dashboardRoutes');
+const brandRoutes = require('./routes/brandRoutes');
 const allocationLogic = require('./services/allocationLogic');
 const supabase = require('./services/supabaseClient');
 require('dotenv').config();
@@ -109,18 +110,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Simple ping endpoint (for keep-alive)
+// ping endpoint (for keep-alive)
 app.get('/api/ping', (req, res) => {
   res.status(200).send('pong');
 });
 
 // API ROUTES
-// 1. Upload and allocate calls
+// Upload and allocate calls
 app.post('/api/upload-allocate', upload.single('file'), async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
+    
+    // Get brand from form data or from Excel
+    const selectedBrand = req.body.brand;
     
     // Read uploaded Excel file
     const workbook = XLSX.readFile(req.file.path);
@@ -128,11 +132,26 @@ app.post('/api/upload-allocate', upload.single('file'), async (req, res) => {
     const worksheet = workbook.Sheets[sheetName];
     const callsData = XLSX.utils.sheet_to_json(worksheet);
     
-    // Get network data from database
+    // Get brand_id from brands table
+    let brandId = 1; // Default to Reliance TV
+    
+    if (selectedBrand) {
+      const { data: brandData, error: brandError } = await supabase
+        .from('brands')
+        .select('id')
+        .eq('name', selectedBrand)
+        .maybeSingle();
+      
+      if (!brandError && brandData) {
+        brandId = brandData.id;
+      }
+    }
+    
+    // Get network data from database for this brand
     const { data: networkData, error: networkError } = await supabase
       .from('asc_network')
       .select('*')
-      .eq('brand_id', 1); // Reliance TV brand
+      .eq('brand_id', brandId);
       
     if (networkError) {
       throw networkError;
@@ -148,7 +167,8 @@ app.post('/api/upload-allocate', upload.single('file'), async (req, res) => {
     const result = await allocationLogic.allocateCalls(
       callsData, 
       networkData, 
-      req.file.originalname
+      req.file.originalname,
+      brandId
     );
     
     if (!result.success) {
@@ -357,6 +377,7 @@ app.post('/api/network/upload', upload.single('file'), async (req, res) => {
 // ROUTE MOUNTING
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/brands', brandRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/network', networkRoutes);
 app.use('/api/dashboard', dashboardRoutes);

@@ -78,13 +78,14 @@ router.get('/recent', async (req, res) => {
     const enhancedData = await Promise.all((historyData || []).map(async (item) => {
       const { data: jobData, error: jobError } = await supabase
         .from('job_allocations')
-        .select('email_sent_status')
+        .select('email_sent_status, crm_status')
         .eq('job_no', item.job_no)
         .maybeSingle();
       
       return {
         ...item,
-        email_sent: jobData?.email_sent_status || false
+        email_sent: jobData?.email_sent_status || false,
+        crm_status: jobData?.crm_status || 'Pending'
       };
     }));
 

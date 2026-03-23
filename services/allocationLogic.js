@@ -42,7 +42,7 @@ const allocationLogic = {
       
       for (const asc of coveringASCs) {
         const currentCount = allocatedCounts[asc.id] || 0;
-        if (currentCount < 3) {
+        if (currentCount < 5) {
           allocated.push({
             ...call,
             allocated_asc: asc,
@@ -90,7 +90,7 @@ const allocationLogic = {
       
       for (const asc of nearbyASCs) {
         const currentCount = allocatedCounts[asc.id] || 0;
-        if (currentCount < 3) {
+        if (currentCount < 5) {
           allocated.push({
             ...call,
             allocated_asc: asc,
@@ -130,7 +130,7 @@ const allocationLogic = {
       
       for (const asc of cityASCs) {
         const currentCount = allocatedCounts[asc.id] || 0;
-        if (currentCount < 3) {
+        if (currentCount < 5) {
           allocated.push({
             ...call,
             allocated_asc: asc,
@@ -170,7 +170,7 @@ const allocationLogic = {
       
       for (const asc of stateASCs) {
         const currentCount = allocatedCounts[asc.id] || 0;
-        if (currentCount < 3) {
+        if (currentCount < 5) {
           allocated.push({
             ...call,
             allocated_asc: asc,
@@ -191,7 +191,7 @@ const allocationLogic = {
   },
 
   // Main allocation function
-  allocateCalls: async (callsData, networkData, fileName) => {
+  allocateCalls: async (callsData, networkData, fileName, brandId = 1) => {
     try {
       // Filter only "Registered-Registered" and blank remark
       const pendingCalls = callsData.filter(call => 
@@ -254,16 +254,21 @@ const allocationLogic = {
           pincode: item.Pincode,
           product: item.Product,
           brand: item.Brand,
+          brand_id: brandId,
           model: item.Model,
           job_for: item['Job For'],
           job_status: item['Job Status'],
+          crm_status: item['Job Status'],
+          job_status: item['Job Status'],
+          remark: item.Remark,
           remark: item.Remark,
           allocated_asc_id: item.allocated_asc.id,
           allocated_asc_name: item.allocated_asc.asp_name,
           allocation_status: 'allocated',
           allocation_date: new Date(),
           email_sent_status: false,
-          file_name: fileName
+          file_name: fileName,
+          brand_id: brandId
         };
         
         await supabase

@@ -555,4 +555,136 @@ router.get('/:reportType/download', authenticate, async (req, res) => {
   }
 });
 
+// Ageing Buckets Report (Calls aging from allocation date)
+router.get('/ageing-buckets', authenticate, async (req, res) => {
+  try {
+    const { startDate, endDate, brand } = req.query;
+    
+    let query = supabase
+      .from('job_allocations')
+      .select(`
+        job_no,
+        brand,
+        allocation_date,
+        close_date,
+        job_status,
+        allocated_asc_name
+      `)
+      .not('allocation_date', 'is', null);
+    
+    if (brand && brand !== 'all') {
+      query = query.eq('brand', brand);
+    }
+    
+    if (startDate) {
+      query = query.gte('allocation_date', startDate);
+    }
+    if (endDate) {
+      query = query.lte('allocation_date', endDate);
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    // Calculate ageing for open calls
+    const today = new Date();
+    const ageingBuckets = {
+      '0-3 days': 0,
+      '4-7 days': 0,
+      '>7 days': 0
+    };
+    
+    data.forEach(job => {
+      // Only count open calls (not closed)
+      if (job.job_status !== 'Closed' && job.job_status !== 'Cancelled') {
+        const allocationDate = new Date(job.allocation_date);
+        const diffDays = Math.floor((today - allocationDate) / (1000 * 60 * 60 * 24));
+        
+        if (diffDays <= 3) ageingBuckets['0-3 days']++;
+        else if (diffDays <= 7) ageingBuckets['4-7 days']++;
+        else ageingBuckets['>7 days']++;
+      }
+    });
+    
+    res.json({ ageingBuckets, totalOpen: Object.values(ageingBuckets).reduce((a,b) => a+b, 0) });
+  } catch (error) {
+    console.error('Ageing buckets error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Brand SLA Performance
+router.get('/brand-sla', authenticate, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    // Get all brands with their SLAs
+    const { data: brands, error: brandError } = await supabase
+      .from('brands')
+      .select('*');
+    
+    if (brandError) throw brandError;
+    
+    let query = supabase
+      .from('job_allocations')
+      .select(`
+        job_no,
+        brand,
+        brand_id,
+        allocation_date,
+        close_date,
+        job_status
+      `)
+      .eq('job_status', 'Closed')
+      .not('close_date', 'is', null);
+    
+    if (startDate) {
+      query = query.gte('close_date', startDate);
+    }
+    if (endDate) {
+      query = query.lte('close_date', endDate);
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    // Calculate SLA performance per brand
+    const brandPerformance = brands.map(brand => {
+      const brandJobs = data.filter(job => job.brand === brand.name);
+      const slaDays = brand.sla_days;
+      
+      let withinSLA = 0;
+      let tatList = [];
+      
+      brandJobs.forEach(job => {
+        if (job.allocation_date && job.close_date) {
+          const tat = calculateTAT(job.allocation_date, job.close_date);
+          if (tat !== null) {
+            tatList.push(tat);
+            if (slaDays && tat <= slaDays) {
+              withinSLA++;
+            }
+          }
+        }
+      });
+      
+      const avgTAT = tatList.length > 0 ? tatList.reduce((a,b) => a+b, 0) / tatList.length : 0;
+      const slaCompliance = slaDays ? Math.round((withinSLA / brandJobs.length) * 100) : null;
+      
+      return {
+        brand: brand.name,
+        sla_days: slaDays || 'No SLA',
+        total_jobs: brandJobs.length,
+        avg_tat: avgTAT.toFixed(1),
+        sla_compliance: slaCompliance ? `${slaCompliance}%` : 'N/A'
+      };
+    });
+    
+    res.json({ brandPerformance });
+  } catch (error) {
+    console.error('Brand SLA error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 module.exports = router;

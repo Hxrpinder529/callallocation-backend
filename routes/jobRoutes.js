@@ -112,6 +112,138 @@ router.post('/update-status', authenticate, async (req, res) => {
   }
 });
 
+// Re-assign job to different ASC
+router.post('/reassign', authenticate, authorize('KAM', 'Admin'), async (req, res) => {
+  try {
+    const { job_no, new_asc_id, reason } = req.body;
+    
+    if (!job_no || !new_asc_id) {
+      return res.status(400).json({ error: 'Job number and new ASC are required' });
+    }
+    
+    // Get current job
+    const { data: job, error: jobError } = await supabase
+      .from('job_allocations')
+      .select('*')
+      .eq('job_no', job_no)
+      .maybeSingle();
+    
+    if (jobError || !job) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    // Get new ASC details
+    const { data: newAsc, error: ascError } = await supabase
+      .from('asc_network')
+      .select('*')
+      .eq('id', new_asc_id)
+      .maybeSingle();
+    
+    if (ascError || !newAsc) {
+      return res.status(404).json({ error: 'ASC not found' });
+    }
+    
+    // Update job with new ASC
+    const { data: updatedJob, error: updateError } = await supabase
+      .from('job_allocations')
+      .update({
+        allocated_asc_id: new_asc_id,
+        allocated_asc_name: newAsc.asp_name,
+        allocation_status: 'reallocated',
+        reassigned_at: new Date(),
+        reassigned_by: req.user.id,
+        reassign_reason: reason || null,
+        updated_at: new Date()
+      })
+      .eq('job_no', job_no)
+      .select();
+    
+    if (updateError) throw updateError;
+    
+    // Log to history
+    await supabase
+      .from('allocation_history')
+      .insert({
+        job_no: job_no,
+        asc_id: new_asc_id,
+        asc_name: newAsc.asp_name,
+        allocation_step: 5, // 5 = re-assigned
+        file_name: job.file_name,
+        reallocated_from: job.allocated_asc_id,
+        reallocated_reason: reason
+      });
+    
+    // Send email for re-assignment
+    const { sendAllocationEmail } = require('../services/emailService');
+    await sendAllocationEmail(updatedJob[0], newAsc, 'kam@rvsolutions.com', newAsc.asm_email_id);
+    
+    res.json({
+      success: true,
+      message: `Job ${job_no} reassigned to ${newAsc.asp_name}`,
+      data: updatedJob[0]
+    });
+    
+  } catch (error) {
+    console.error('Reassignment error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get unallocated jobs for manual allocation
+router.get('/unallocated', authenticate, authorize('KAM', 'Admin'), async (req, res) => {
+  try {
+    const { brand, limit = 100 } = req.query;
+    
+    let query = supabase
+      .from('job_allocations')
+      .select('*')
+      .is('allocated_asc_id', null)
+      .order('created_at', { ascending: false })
+      .limit(parseInt(limit));
+    
+    if (brand && brand !== 'all') {
+      query = query.eq('brand', brand);
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Get unallocated error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get all ASCs for selection
+router.get('/asc-list', authenticate, async (req, res) => {
+  try {
+    const { brand_id, city, pincode } = req.query;
+    
+    let query = supabase
+      .from('asc_network')
+      .select('id, asp_name, city, coverage_pincode, zone, state');
+    
+    if (brand_id) {
+      query = query.eq('brand_id', brand_id);
+    }
+    if (city) {
+      query = query.ilike('city', `%${city}%`);
+    }
+    if (pincode) {
+      query = query.eq('coverage_pincode', pincode);
+    }
+    
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    res.json(data);
+  } catch (error) {
+    console.error('Get ASC list error:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Get job by exact number
 router.get('/:jobNo', authenticate, async (req, res) => {
   try {
