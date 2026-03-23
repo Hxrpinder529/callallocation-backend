@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const supabase = require('../services/supabaseClient');
-const { authenticate } = require('../middleware/auth');
+const { authenticate, authorize } = require('../middleware/auth'); // ← FIXED: Added authorize
 
 // Search jobs by number (partial match)
 router.get('/search', authenticate, async (req, res) => {
@@ -112,7 +112,7 @@ router.post('/update-status', authenticate, async (req, res) => {
   }
 });
 
-// Re-assign job to different ASC
+// Re-assign job to different ASC (KAM/Admin only)
 router.post('/reassign', authenticate, authorize('KAM', 'Admin'), async (req, res) => {
   try {
     const { job_no, new_asc_id, reason } = req.body;
@@ -189,7 +189,7 @@ router.post('/reassign', authenticate, authorize('KAM', 'Admin'), async (req, re
   }
 });
 
-// Get unallocated jobs for manual allocation
+// Get unallocated jobs for manual allocation (KAM/Admin only)
 router.get('/unallocated', authenticate, authorize('KAM', 'Admin'), async (req, res) => {
   try {
     const { brand, limit = 100 } = req.query;
